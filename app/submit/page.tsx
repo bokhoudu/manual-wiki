@@ -20,6 +20,19 @@ type FormState = {
   contributor: string;
 };
 
+const categoryOptions = [
+  "생활가전",
+  "주방가전",
+  "전자기기",
+  "오디오",
+  "카메라",
+  "공구",
+  "컴퓨터/주변기기",
+  "게임기",
+  "자동차용품",
+  "기타"
+];
+
 const initialForm: FormState = {
   productName: "",
   brand: "",
@@ -40,12 +53,11 @@ function parseLines(value: string) {
 }
 
 function parseTroubleshooting(value: string) {
-  const lines = parseLines(value);
-  return lines.map((line) => {
+  return parseLines(value).map((line) => {
     const [title, ...solutionParts] = line.split(":");
     return {
       title: title.trim(),
-      solution: solutionParts.join(":").trim() || "해결 방법을 추가로 확인해야 합니다."
+      solution: solutionParts.join(":").trim()
     };
   });
 }
@@ -77,35 +89,50 @@ export default function SubmitPage() {
       return;
     }
 
+    if (!form.manualUrl.trim() && !manualFile) {
+      setError("매뉴얼 URL 또는 파일 중 하나는 입력해 주세요.");
+      return;
+    }
+
     setSaving(true);
     setError(null);
 
     try {
-      const uploadedFile = manualFile
-        ? await uploadManualFile(manualFile, user.id)
-        : {
-            fileUrl: null,
-            filePath: null,
-            fileType: null,
-            fileName: null
-          };
+      let uploadedFile: Pick<ManualInput, "fileUrl" | "filePath" | "fileType" | "fileName"> = {
+        fileUrl: null,
+        filePath: null,
+        fileType: null,
+        fileName: null
+      };
+
+      if (manualFile) {
+        try {
+          uploadedFile = await uploadManualFile(manualFile, user.id);
+        } catch (uploadError) {
+          console.error("Manual file upload failed during submit", uploadError);
+
+          if (!form.manualUrl.trim()) {
+            throw uploadError;
+          }
+        }
+      }
 
       const manual: ManualInput = {
-        productName: form.productName,
-        brand: form.brand,
-        modelName: form.modelName,
+        productName: form.productName.trim(),
+        brand: form.brand.trim(),
+        modelName: form.modelName.trim(),
         category: form.category,
-        manualUrl: form.manualUrl,
+        manualUrl: form.manualUrl.trim(),
         fileUrl: uploadedFile.fileUrl,
         filePath: uploadedFile.filePath,
         fileType: uploadedFile.fileType,
         fileName: uploadedFile.fileName,
-        summaryKo: form.summaryKo,
+        summaryKo: form.summaryKo.trim(),
         quickGuide: parseLines(form.quickGuide),
         troubleshooting: parseTroubleshooting(form.troubleshooting),
         contributorId: user.id,
         contributorEmail: user.email ?? "",
-        contributorNickname: form.contributor
+        contributorNickname: form.contributor.trim() || displayName || user.email || "익명"
       };
 
       const createdManual = await addManual(manual);
@@ -147,25 +174,42 @@ export default function SubmitPage() {
       <div className="max-w-3xl">
         <p className="text-sm font-bold uppercase tracking-wide text-wiki-blue">Submit</p>
         <h1 className="mt-3 text-3xl font-bold text-wiki-ink">매뉴얼 등록하기</h1>
-        <p className="mt-3 text-slate-600">등록한 매뉴얼은 Supabase DB에 pending 상태로 저장되고 검토 후 공개 운영에 활용됩니다.</p>
+        <p className="mt-3 text-slate-600">
+          제품명과 모델명을 입력하고, 원본 URL 또는 파일 중 하나를 등록해 주세요.
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} className="mt-8 space-y-6 rounded-lg border border-slate-200 bg-wiki-soft p-5 sm:p-7">
         <div className="grid gap-5 sm:grid-cols-2">
           <TextField label="제품명" value={form.productName} onChange={(value) => updateField("productName", value)} required />
-          <TextField label="브랜드" value={form.brand} onChange={(value) => updateField("brand", value)} required />
           <TextField label="모델명" value={form.modelName} onChange={(value) => updateField("modelName", value)} required />
-          <TextField label="카테고리" value={form.category} onChange={(value) => updateField("category", value)} required />
+          <TextField label="브랜드" value={form.brand} onChange={(value) => updateField("brand", value)} />
+          <label className="block text-sm font-semibold text-slate-700">
+            카테고리
+            <select
+              value={form.category}
+              onChange={(event) => updateField("category", event.target.value)}
+              className="mt-2 min-h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-slate-800 outline-none transition focus:border-wiki-blue focus:ring-4 focus:ring-blue-100"
+            >
+              <option value="">선택 안 함</option>
+              {categoryOptions.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
+
         <TextField
           label="원본 매뉴얼 URL"
           type="url"
           value={form.manualUrl}
           onChange={(value) => updateField("manualUrl", value)}
-          required
         />
+
         <label className="block text-sm font-semibold text-slate-700">
-          매뉴얼 파일 업로드
+          파일 업로드
           <input
             type="file"
             accept="application/pdf,image/jpeg,image/png,image/webp"
@@ -183,38 +227,34 @@ export default function SubmitPage() {
             className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-800 file:mr-4 file:rounded-md file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:font-semibold file:text-wiki-blue hover:file:bg-blue-100"
           />
           <span className="mt-2 block text-xs font-normal text-slate-500">
-            PDF, JPG, PNG, WEBP 파일을 Supabase Storage manual-files 버킷에 업로드합니다.
+            PDF, JPG, PNG, WEBP 파일을 업로드할 수 있습니다. 파일명은 원본 그대로 저장되지만 Storage 경로에는 사용하지 않습니다.
           </span>
         </label>
-        <TextArea label="한국어 요약" value={form.summaryKo} onChange={(value) => updateField("summaryKo", value)} required />
+
+        <TextArea label="한국어 요약" value={form.summaryKo} onChange={(value) => updateField("summaryKo", value)} />
         <TextArea
-          label="빠른 사용법"
+          label="목차"
           value={form.quickGuide}
           onChange={(value) => updateField("quickGuide", value)}
           placeholder="한 줄에 하나씩 입력하세요"
-          required
         />
         <TextArea
-          label="오류코드/문제 해결"
+          label="주요문제 해결방법"
           value={form.troubleshooting}
           onChange={(value) => updateField("troubleshooting", value)}
           placeholder="문제 제목: 해결 방법 형식으로 한 줄씩 입력하세요"
-          required
         />
-        <TextField
-          label="등록자 닉네임"
-          value={form.contributor}
-          onChange={(value) => updateField("contributor", value)}
-          required
-        />
+        <TextField label="등록자 닉네임" value={form.contributor} onChange={(value) => updateField("contributor", value)} />
+
         {error && (
           <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</p>
         )}
+
         <div className="flex justify-end">
           <button
             type="submit"
             disabled={saving}
-            className="min-h-12 rounded-lg bg-wiki-blue px-6 font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100"
+            className="min-h-12 rounded-lg bg-wiki-blue px-6 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 focus:outline-none focus:ring-4 focus:ring-blue-100"
           >
             {saving ? "저장 중" : "등록하기"}
           </button>
@@ -255,14 +295,12 @@ function TextArea({
   label,
   value,
   onChange,
-  placeholder,
-  required = false
+  placeholder
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-  required?: boolean;
 }) {
   return (
     <label className="block text-sm font-semibold text-slate-700">
@@ -271,7 +309,6 @@ function TextArea({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        required={required}
         rows={5}
         className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-wiki-blue focus:ring-4 focus:ring-blue-100"
       />

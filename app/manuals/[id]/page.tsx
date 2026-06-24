@@ -8,12 +8,18 @@ import { useManuals } from "@/components/ManualStore";
 import { useAuth } from "@/components/AuthProvider";
 import type { SuggestionType } from "@/types/manual";
 
+const emptyText = "아직 등록된 내용이 없습니다";
+
 function isImageFile(fileType: string | null) {
   return fileType?.startsWith("image/") ?? false;
 }
 
 function isPdfFile(fileType: string | null) {
   return fileType === "application/pdf";
+}
+
+function displayValue(value: string) {
+  return value.trim() || emptyText;
 }
 
 export default function ManualDetailPage() {
@@ -90,30 +96,40 @@ export default function ManualDetailPage() {
         <div className="flex flex-wrap items-center gap-3">
           <StatusBadge status={manual.translationStatus} />
           <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-            원문 등록 완료
+            원문 정보 등록
           </span>
-          <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
-            한국어 요약 있음
-          </span>
+          {manual.summaryKo.trim() && (
+            <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+              한국어 요약 있음
+            </span>
+          )}
           {manual.translationStatus === "review" && (
             <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
               번역 검수 필요
             </span>
           )}
         </div>
+
         <h1 className="mt-5 text-4xl font-bold tracking-tight text-wiki-ink">{manual.productName}</h1>
         <p className="mt-4 text-lg text-slate-600">
-          {manual.brand} / {manual.modelName} / {manual.category}
+          {displayValue(manual.brand)} / {displayValue(manual.modelName)} / {displayValue(manual.category)}
         </p>
+
         <div className="mt-6 flex flex-wrap gap-3">
-          <a
-            href={manual.manualUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex min-h-11 items-center rounded-lg bg-wiki-blue px-4 font-semibold text-white transition hover:bg-blue-700"
-          >
-            매뉴얼 원문 링크
-          </a>
+          {manual.manualUrl ? (
+            <a
+              href={manual.manualUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex min-h-11 items-center rounded-lg bg-wiki-blue px-4 font-semibold text-white transition hover:bg-blue-700"
+            >
+              매뉴얼 원문 링크
+            </a>
+          ) : (
+            <span className="inline-flex min-h-11 items-center rounded-lg border border-slate-200 bg-slate-50 px-4 font-semibold text-slate-500">
+              원문 URL 없음
+            </span>
+          )}
           <button
             type="button"
             onClick={() => requireLoginOrOpen("translation_report")}
@@ -129,6 +145,7 @@ export default function ManualDetailPage() {
             수정 제안
           </button>
         </div>
+
         <div className="mt-4 flex flex-col gap-3">
           {message && (
             <p className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-800">
@@ -171,6 +188,7 @@ export default function ManualDetailPage() {
             </div>
           )}
         </div>
+
         {manual.fileUrl && (
           <section className="mt-6 rounded-lg border border-slate-200 bg-wiki-soft p-4">
             <h2 className="text-lg font-bold text-wiki-ink">업로드된 매뉴얼 파일</h2>
@@ -195,16 +213,6 @@ export default function ManualDetailPage() {
                 PDF 보기/다운로드
               </a>
             )}
-            {!isImageFile(manual.fileType) && !isPdfFile(manual.fileType) && (
-              <a
-                href={manual.fileUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-4 inline-flex min-h-11 items-center rounded-lg border border-slate-300 px-4 font-semibold text-slate-700 transition hover:border-wiki-blue hover:bg-blue-50 hover:text-wiki-blue"
-              >
-                파일 열기
-              </a>
-            )}
           </section>
         )}
       </div>
@@ -212,33 +220,41 @@ export default function ManualDetailPage() {
       <div className="prose prose-slate mt-8 max-w-none">
         <section className="rounded-lg border border-slate-200 bg-white p-6">
           <h2 className="text-2xl font-bold text-wiki-ink">한국어 요약</h2>
-          <p className="mt-4 leading-8 text-slate-700">{manual.summaryKo}</p>
+          <p className="mt-4 leading-8 text-slate-700">{displayValue(manual.summaryKo)}</p>
         </section>
 
         <section className="mt-6 rounded-lg border border-slate-200 bg-white p-6">
-          <h2 className="text-2xl font-bold text-wiki-ink">빠른 사용법</h2>
-          <ol className="mt-4 space-y-3">
-            {manual.quickGuide.map((item, index) => (
-              <li key={item} className="flex gap-3 leading-7 text-slate-700">
-                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-bold text-wiki-blue">
-                  {index + 1}
-                </span>
-                <span>{item}</span>
-              </li>
-            ))}
-          </ol>
+          <h2 className="text-2xl font-bold text-wiki-ink">목차</h2>
+          {manual.quickGuide.length > 0 ? (
+            <ol className="mt-4 space-y-3">
+              {manual.quickGuide.map((item, index) => (
+                <li key={item} className="flex gap-3 leading-7 text-slate-700">
+                  <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-bold text-wiki-blue">
+                    {index + 1}
+                  </span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="mt-4 leading-8 text-slate-700">{emptyText}</p>
+          )}
         </section>
 
         <section className="mt-6 rounded-lg border border-slate-200 bg-white p-6">
-          <h2 className="text-2xl font-bold text-wiki-ink">자주 묻는 문제</h2>
-          <div className="mt-4 divide-y divide-slate-200">
-            {manual.troubleshooting.map((item) => (
-              <div key={item.title} className="py-4 first:pt-0 last:pb-0">
-                <h3 className="text-lg font-bold text-wiki-ink">{item.title}</h3>
-                <p className="mt-2 leading-7 text-slate-700">{item.solution}</p>
-              </div>
-            ))}
-          </div>
+          <h2 className="text-2xl font-bold text-wiki-ink">주요문제 해결방법</h2>
+          {manual.troubleshooting.length > 0 ? (
+            <div className="mt-4 divide-y divide-slate-200">
+              {manual.troubleshooting.map((item) => (
+                <div key={item.title} className="py-4 first:pt-0 last:pb-0">
+                  <h3 className="text-lg font-bold text-wiki-ink">{item.title}</h3>
+                  <p className="mt-2 leading-7 text-slate-700">{displayValue(item.solution)}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-4 leading-8 text-slate-700">{emptyText}</p>
+          )}
         </section>
       </div>
     </article>

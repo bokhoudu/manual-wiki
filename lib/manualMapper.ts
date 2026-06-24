@@ -43,7 +43,7 @@ export function mapManualRow(row: ManualRow): Manual {
 export function mapManualInput(input: ManualInput): ManualInsert {
   return {
     product_name: input.productName,
-    brand: input.brand,
+    brand: input.brand.trim() || "미입력",
     model_name: input.modelName,
     category: input.category,
     manual_url: input.manualUrl,

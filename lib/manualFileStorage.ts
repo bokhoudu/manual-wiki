@@ -81,8 +81,17 @@ export async function uploadManualFile(file: File, userId: string): Promise<Manu
     if (error) {
       throw error;
     }
-  } catch {
-    throw new Error("파일 업로드에 실패했습니다. 파일 형식과 Supabase Storage 설정을 확인해 주세요.");
+  } catch (error) {
+    console.error("Supabase Storage upload failed", {
+      bucket: BUCKET_NAME,
+      path: filePath,
+      fileName: file.name,
+      fileType: file.type,
+      error
+    });
+
+    const message = error instanceof Error ? error.message : "알 수 없는 오류";
+    throw new Error(`파일 업로드에 실패했습니다. Supabase 오류: ${message}`);
   }
 
   const { data } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
