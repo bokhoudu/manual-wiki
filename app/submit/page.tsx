@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useManuals } from "@/components/ManualStore";
 import { useAuth } from "@/components/AuthProvider";
+import LoginPanel from "@/components/LoginPanel";
 import { isAcceptedManualFile, uploadManualFile } from "@/lib/manualFileStorage";
 import type { ManualInput } from "@/types/manual";
 
@@ -89,7 +90,7 @@ function getFieldErrors(form: FormState, manualFile: File | null): FieldErrors {
 export default function SubmitPage() {
   const router = useRouter();
   const { addManual } = useManuals();
-  const { user, displayName, loading: authLoading, signInWithGoogle } = useAuth();
+  const { user, displayName, loading: authLoading } = useAuth();
   const [form, setForm] = useState<FormState>(initialForm);
   const [manualFile, setManualFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
@@ -187,13 +188,9 @@ export default function SubmitPage() {
         <p className="text-sm font-bold uppercase tracking-wide text-wiki-blue">Submit</p>
         <h1 className="mt-3 text-3xl font-bold text-wiki-ink">로그인이 필요합니다</h1>
         <p className="mt-4 text-slate-600">매뉴얼 등록은 로그인한 사용자만 사용할 수 있습니다.</p>
-        <button
-          type="button"
-          onClick={() => void signInWithGoogle()}
-          className="mt-6 min-h-12 rounded-lg bg-wiki-blue px-6 font-semibold text-white transition hover:bg-blue-700"
-        >
-          Google로 로그인
-        </button>
+        <div className="mt-6">
+          <LoginPanel variant="full" />
+        </div>
       </div>
     );
   }

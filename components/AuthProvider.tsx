@@ -18,6 +18,7 @@ type AuthContextValue = {
   loading: boolean;
   displayName: string | null;
   signInWithGoogle: () => Promise<void>;
+  signInWithEmail: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -72,6 +73,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const signInWithEmail = useCallback(async (email: string) => {
+    if (!supabase) {
+      throw new Error("Supabase 환경변수를 설정한 뒤 이메일 로그인을 사용할 수 있습니다.");
+    }
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: window.location.href
+      }
+    });
+
+    if (error) {
+      throw error;
+    }
+  }, []);
+
   const signOut = useCallback(async () => {
     if (!supabase) {
       return;
@@ -87,9 +105,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       displayName: getUserDisplayName(user),
       signInWithGoogle,
+      signInWithEmail,
       signOut
     }),
-    [loading, session, signInWithGoogle, signOut, user]
+    [loading, session, signInWithEmail, signInWithGoogle, signOut, user]
   );
 
   return (
