@@ -20,6 +20,12 @@ type FormState = {
   contributor: string;
 };
 
+type FieldErrors = {
+  productName?: string;
+  modelName?: string;
+  source?: string;
+};
+
 const categoryOptions = [
   "생활가전",
   "주방가전",
@@ -62,6 +68,24 @@ function parseTroubleshooting(value: string) {
   });
 }
 
+function getFieldErrors(form: FormState, manualFile: File | null): FieldErrors {
+  const errors: FieldErrors = {};
+
+  if (!form.productName.trim()) {
+    errors.productName = "제품명을 입력해 주세요.";
+  }
+
+  if (!form.modelName.trim()) {
+    errors.modelName = "모델명을 입력해 주세요.";
+  }
+
+  if (!form.manualUrl.trim() && !manualFile) {
+    errors.source = "매뉴얼 URL 또는 파일 중 하나는 입력해 주세요.";
+  }
+
+  return errors;
+}
+
 export default function SubmitPage() {
   const router = useRouter();
   const { addManual } = useManuals();
@@ -70,6 +94,7 @@ export default function SubmitPage() {
   const [manualFile, setManualFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   useEffect(() => {
     if (displayName && form.contributor.trim().length === 0) {
@@ -79,6 +104,7 @@ export default function SubmitPage() {
 
   const updateField = (field: keyof FormState, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
+    setFieldErrors((current) => ({ ...current, [field]: undefined, source: field === "manualUrl" ? undefined : current.source }));
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -89,8 +115,11 @@ export default function SubmitPage() {
       return;
     }
 
-    if (!form.manualUrl.trim() && !manualFile) {
-      setError("매뉴얼 URL 또는 파일 중 하나는 입력해 주세요.");
+    const nextFieldErrors = getFieldErrors(form, manualFile);
+    setFieldErrors(nextFieldErrors);
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setError(null);
       return;
     }
 
@@ -175,17 +204,31 @@ export default function SubmitPage() {
         <p className="text-sm font-bold uppercase tracking-wide text-wiki-blue">Submit</p>
         <h1 className="mt-3 text-3xl font-bold text-wiki-ink">매뉴얼 등록하기</h1>
         <p className="mt-3 text-slate-600">
-          제품명과 모델명을 입력하고, 원본 URL 또는 파일 중 하나를 등록해 주세요.
+          필수 항목을 먼저 채우고, 원본 매뉴얼 URL 또는 파일 업로드 중 하나를 등록해 주세요.
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="mt-8 space-y-6 rounded-lg border border-slate-200 bg-wiki-soft p-5 sm:p-7">
         <div className="grid gap-5 sm:grid-cols-2">
-          <TextField label="제품명" value={form.productName} onChange={(value) => updateField("productName", value)} required />
-          <TextField label="모델명" value={form.modelName} onChange={(value) => updateField("modelName", value)} required />
-          <TextField label="브랜드" value={form.brand} onChange={(value) => updateField("brand", value)} />
+          <TextField
+            label="제품명"
+            requirement="required"
+            value={form.productName}
+            onChange={(value) => updateField("productName", value)}
+            error={fieldErrors.productName}
+            required
+          />
+          <TextField
+            label="모델명"
+            requirement="required"
+            value={form.modelName}
+            onChange={(value) => updateField("modelName", value)}
+            error={fieldErrors.modelName}
+            required
+          />
+          <TextField label="브랜드" requirement="optional" value={form.brand} onChange={(value) => updateField("brand", value)} />
           <label className="block text-sm font-semibold text-slate-700">
-            카테고리
+            <FieldLabel label="카테고리" requirement="optional" />
             <select
               value={form.category}
               onChange={(event) => updateField("category", event.target.value)}
@@ -203,13 +246,19 @@ export default function SubmitPage() {
 
         <TextField
           label="원본 매뉴얼 URL"
+          requirement="optional"
+          description="원본 매뉴얼 URL 또는 파일 업로드 중 하나는 반드시 입력해야 합니다."
           type="url"
           value={form.manualUrl}
           onChange={(value) => updateField("manualUrl", value)}
+          error={fieldErrors.source}
         />
 
         <label className="block text-sm font-semibold text-slate-700">
-          파일 업로드
+          <FieldLabel label="파일 업로드" requirement="optional" />
+          <span className="mt-1 block text-xs font-normal text-slate-500">
+            원본 매뉴얼 URL 또는 파일 업로드 중 하나는 반드시 입력해야 합니다.
+          </span>
           <input
             type="file"
             accept="application/pdf,image/jpeg,image/png,image/webp"
@@ -223,28 +272,43 @@ export default function SubmitPage() {
               }
               setError(null);
               setManualFile(selectedFile);
+              setFieldErrors((current) => ({ ...current, source: undefined }));
             }}
             className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-800 file:mr-4 file:rounded-md file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:font-semibold file:text-wiki-blue hover:file:bg-blue-100"
           />
-          <span className="mt-2 block text-xs font-normal text-slate-500">
-            PDF, JPG, PNG, WEBP 파일을 업로드할 수 있습니다. 파일명은 원본 그대로 저장되지만 Storage 경로에는 사용하지 않습니다.
-          </span>
+          {fieldErrors.source && !form.manualUrl.trim() && !manualFile && (
+            <span className="mt-2 block text-sm font-medium text-red-600">{fieldErrors.source}</span>
+          )}
         </label>
 
-        <TextArea label="한국어 요약" value={form.summaryKo} onChange={(value) => updateField("summaryKo", value)} />
+        <TextArea label="한국어 요약" requirement="optional" value={form.summaryKo} onChange={(value) => updateField("summaryKo", value)} />
         <TextArea
           label="목차"
+          requirement="optional"
           value={form.quickGuide}
           onChange={(value) => updateField("quickGuide", value)}
           placeholder="한 줄에 하나씩 입력하세요"
         />
         <TextArea
           label="주요문제 해결방법"
+          requirement="optional"
           value={form.troubleshooting}
           onChange={(value) => updateField("troubleshooting", value)}
           placeholder="문제 제목: 해결 방법 형식으로 한 줄씩 입력하세요"
         />
-        <TextField label="등록자 닉네임" value={form.contributor} onChange={(value) => updateField("contributor", value)} />
+        <TextField label="등록자 닉네임" requirement="optional" value={form.contributor} onChange={(value) => updateField("contributor", value)} />
+
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+          <p className="font-bold">필수 입력:</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            <li>제품명</li>
+            <li>모델명</li>
+          </ul>
+          <p className="mt-4 font-bold">필수 조건:</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            <li>원본 매뉴얼 URL 또는 파일 업로드 중 하나 입력</li>
+          </ul>
+        </div>
 
         {error && (
           <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</p>
@@ -264,47 +328,73 @@ export default function SubmitPage() {
   );
 }
 
+function FieldLabel({ label, requirement }: { label: string; requirement: "required" | "optional" }) {
+  return (
+    <span>
+      {label}{" "}
+      {requirement === "required" ? (
+        <span className="text-red-600">(필수)</span>
+      ) : (
+        <span className="text-slate-400">(선택)</span>
+      )}
+    </span>
+  );
+}
+
 function TextField({
   label,
+  requirement,
   value,
   onChange,
   type = "text",
-  required = false
+  required = false,
+  description,
+  error
 }: {
   label: string;
+  requirement: "required" | "optional";
   value: string;
   onChange: (value: string) => void;
   type?: string;
   required?: boolean;
+  description?: string;
+  error?: string;
 }) {
   return (
     <label className="block text-sm font-semibold text-slate-700">
-      {label}
+      <FieldLabel label={label} requirement={requirement} />
+      {description && <span className="mt-1 block text-xs font-normal text-slate-500">{description}</span>}
       <input
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         required={required}
-        className="mt-2 min-h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-slate-800 outline-none transition focus:border-wiki-blue focus:ring-4 focus:ring-blue-100"
+        aria-invalid={Boolean(error)}
+        className={`mt-2 min-h-12 w-full rounded-lg border bg-white px-4 text-slate-800 outline-none transition focus:border-wiki-blue focus:ring-4 focus:ring-blue-100 ${
+          error ? "border-red-300" : "border-slate-300"
+        }`}
       />
+      {error && <span className="mt-2 block text-sm font-medium text-red-600">{error}</span>}
     </label>
   );
 }
 
 function TextArea({
   label,
+  requirement,
   value,
   onChange,
   placeholder
 }: {
   label: string;
+  requirement: "required" | "optional";
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
 }) {
   return (
     <label className="block text-sm font-semibold text-slate-700">
-      {label}
+      <FieldLabel label={label} requirement={requirement} />
       <textarea
         value={value}
         onChange={(event) => onChange(event.target.value)}
