@@ -190,28 +190,45 @@ export default function ManualDetailPage() {
         </div>
 
         {manual.fileUrl && (
-          <section className="mt-6 rounded-lg border border-slate-200 bg-wiki-soft p-4">
-            <h2 className="text-lg font-bold text-wiki-ink">업로드된 매뉴얼 파일</h2>
-            <p className="mt-1 text-sm text-slate-600">{manual.fileName ?? "manual file"}</p>
+          <section className="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             {isImageFile(manual.fileType) && (
-              <a href={manual.fileUrl} target="_blank" rel="noreferrer" className="mt-4 block">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={manual.fileUrl}
-                  alt={manual.fileName ?? manual.productName}
-                  className="max-h-[520px] w-full rounded-lg border border-slate-200 object-contain"
-                />
-              </a>
+              <div>
+                <h2 className="text-lg font-bold text-wiki-ink">첨부된 매뉴얼 이미지</h2>
+                <a href={manual.fileUrl} target="_blank" rel="noreferrer" className="mt-4 block overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={manual.fileUrl}
+                    alt="첨부된 매뉴얼 이미지"
+                    className="block max-h-[520px] w-full max-w-full object-contain"
+                  />
+                </a>
+              </div>
             )}
             {isPdfFile(manual.fileType) && (
-              <a
-                href={manual.fileUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-wiki-blue px-4 font-semibold text-white transition hover:bg-blue-700"
-              >
-                PDF 보기/다운로드
-              </a>
+              <div>
+                <h2 className="text-lg font-bold text-wiki-ink">첨부된 매뉴얼 PDF</h2>
+                <a
+                  href={manual.fileUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-wiki-blue px-4 font-semibold text-white transition hover:bg-blue-700"
+                >
+                  매뉴얼 PDF 열기
+                </a>
+              </div>
+            )}
+            {!isImageFile(manual.fileType) && !isPdfFile(manual.fileType) && (
+              <div>
+                <h2 className="text-lg font-bold text-wiki-ink">첨부된 매뉴얼 파일</h2>
+                <a
+                  href={manual.fileUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-wiki-blue px-4 font-semibold text-white transition hover:bg-blue-700"
+                >
+                  첨부 파일 열기
+                </a>
+              </div>
             )}
           </section>
         )}
