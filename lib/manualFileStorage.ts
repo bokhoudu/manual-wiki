@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabaseClient";
 
 const BUCKET_NAME = "manual-files";
+const ALLOWED_EXTENSIONS = ["pdf", "jpg", "jpeg", "png", "webp"] as const;
 
 export const ACCEPTED_MANUAL_FILE_TYPES = [
   "application/pdf",
@@ -17,21 +18,45 @@ export type ManualFileUploadResult = {
 };
 
 export function isAcceptedManualFile(file: File) {
-  return ACCEPTED_MANUAL_FILE_TYPES.includes(file.type as (typeof ACCEPTED_MANUAL_FILE_TYPES)[number]);
+  return Boolean(getAllowedExtension(file.name) && isAcceptedMimeType(file.type));
 }
 
-function sanitizeFileName(fileName: string) {
-  const normalized = fileName.trim().replace(/\s+/g, "-");
-  return normalized.replace(/[^a-zA-Z0-9가-힣._-]/g, "");
+function isAcceptedMimeType(mimeType: string) {
+  return ACCEPTED_MANUAL_FILE_TYPES.includes(mimeType as (typeof ACCEPTED_MANUAL_FILE_TYPES)[number]);
 }
 
-function createStoragePath(userId: string, fileName: string) {
+function isExtensionMimeCompatible(extension: string, mimeType: string) {
+  const mimeByExtension: Record<(typeof ALLOWED_EXTENSIONS)[number], string> = {
+    pdf: "application/pdf",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    webp: "image/webp"
+  };
+
+  return mimeByExtension[extension as (typeof ALLOWED_EXTENSIONS)[number]] === mimeType;
+}
+
+function getAllowedExtension(fileName: string) {
+  const extension = fileName.split(".").pop()?.trim().toLowerCase();
+  if (!extension) {
+    return null;
+  }
+
+  return ALLOWED_EXTENSIONS.includes(extension as (typeof ALLOWED_EXTENSIONS)[number]) ? extension : null;
+}
+
+function normalizeStorageExtension(extension: string) {
+  return extension === "jpeg" ? "jpg" : extension;
+}
+
+function createStoragePath(userId: string, extension: string) {
   const today = new Date().toISOString().slice(0, 10);
   const randomValue = typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
     : Math.random().toString(36).slice(2);
 
-  return `${userId}/${today}-${randomValue}-${sanitizeFileName(fileName)}`;
+  return `${userId}/${today}/${randomValue}.${normalizeStorageExtension(extension)}`;
 }
 
 export async function uploadManualFile(file: File, userId: string): Promise<ManualFileUploadResult> {
@@ -39,19 +64,25 @@ export async function uploadManualFile(file: File, userId: string): Promise<Manu
     throw new Error("Supabase 환경변수가 설정되지 않아 파일을 업로드할 수 없습니다.");
   }
 
-  if (!isAcceptedManualFile(file)) {
+  const extension = getAllowedExtension(file.name);
+  if (!extension || !isAcceptedMimeType(file.type) || !isExtensionMimeCompatible(extension, file.type)) {
     throw new Error("PDF, JPG, PNG, WEBP 파일만 업로드할 수 있습니다.");
   }
 
-  const filePath = createStoragePath(userId, file.name);
-  const { error } = await supabase.storage.from(BUCKET_NAME).upload(filePath, file, {
-    cacheControl: "3600",
-    contentType: file.type,
-    upsert: false
-  });
+  const filePath = createStoragePath(userId, extension);
 
-  if (error) {
-    throw error;
+  try {
+    const { error } = await supabase.storage.from(BUCKET_NAME).upload(filePath, file, {
+      cacheControl: "3600",
+      contentType: file.type,
+      upsert: false
+    });
+
+    if (error) {
+      throw error;
+    }
+  } catch {
+    throw new Error("파일 업로드에 실패했습니다. 파일 형식과 Supabase Storage 설정을 확인해 주세요.");
   }
 
   const { data } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
