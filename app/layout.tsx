@@ -8,7 +8,17 @@ import { AuthProvider } from "@/components/AuthProvider";
 
 export const metadata: Metadata = {
   title: "Manual Wiki",
-  description: "제품 매뉴얼 검색, 열람, 등록을 위한 MVP 위키"
+  description: "제품 매뉴얼 검색, 열람, 등록을 위한 MVP 위키",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: "/icons/manual-wiki-icon.svg",
+    apple: "/icons/manual-wiki-icon.svg"
+  },
+  appleWebApp: {
+    capable: true,
+    title: "Manual Wiki",
+    statusBarStyle: "default"
+  }
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -33,7 +34,7 @@ export function ManualProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [isFallback, setIsFallback] = useState(!isSupabaseConfigured);
 
-  const refreshManuals = async () => {
+  const refreshManuals = useCallback(async () => {
     if (!supabase) {
       setManuals(seedManuals);
       setLoading(false);
@@ -61,7 +62,7 @@ export function ManualProvider({ children }: { children: ReactNode }) {
     setError(null);
     setIsFallback(false);
     setLoading(false);
-  };
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -100,12 +101,12 @@ export function ManualProvider({ children }: { children: ReactNode }) {
         }
       }
     }),
-    [error, isFallback, loading, manuals]
+    [error, isFallback, loading, manuals, refreshManuals]
   );
 
   useEffect(() => {
     void refreshManuals();
-  }, []);
+  }, [refreshManuals]);
 
   return <ManualContext.Provider value={value}>{children}</ManualContext.Provider>;
 }
