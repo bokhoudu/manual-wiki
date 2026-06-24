@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useManuals } from "@/components/ManualStore";
 import { useAuth } from "@/components/AuthProvider";
+import { isAcceptedManualFile, uploadManualFile } from "@/lib/manualFileStorage";
 import type { ManualInput } from "@/types/manual";
 
 type FormState = {
@@ -54,6 +55,7 @@ export default function SubmitPage() {
   const { addManual } = useManuals();
   const { user, displayName, loading: authLoading, signInWithGoogle } = useAuth();
   const [form, setForm] = useState<FormState>(initialForm);
+  const [manualFile, setManualFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -78,21 +80,34 @@ export default function SubmitPage() {
     setSaving(true);
     setError(null);
 
-    const manual: ManualInput = {
-      productName: form.productName,
-      brand: form.brand,
-      modelName: form.modelName,
-      category: form.category,
-      manualUrl: form.manualUrl,
-      summaryKo: form.summaryKo,
-      quickGuide: parseLines(form.quickGuide),
-      troubleshooting: parseTroubleshooting(form.troubleshooting),
-      contributorId: user.id,
-      contributorEmail: user.email ?? "",
-      contributorNickname: form.contributor
-    };
-
     try {
+      const uploadedFile = manualFile
+        ? await uploadManualFile(manualFile, user.id)
+        : {
+            fileUrl: null,
+            filePath: null,
+            fileType: null,
+            fileName: null
+          };
+
+      const manual: ManualInput = {
+        productName: form.productName,
+        brand: form.brand,
+        modelName: form.modelName,
+        category: form.category,
+        manualUrl: form.manualUrl,
+        fileUrl: uploadedFile.fileUrl,
+        filePath: uploadedFile.filePath,
+        fileType: uploadedFile.fileType,
+        fileName: uploadedFile.fileName,
+        summaryKo: form.summaryKo,
+        quickGuide: parseLines(form.quickGuide),
+        troubleshooting: parseTroubleshooting(form.troubleshooting),
+        contributorId: user.id,
+        contributorEmail: user.email ?? "",
+        contributorNickname: form.contributor
+      };
+
       const createdManual = await addManual(manual);
       router.push(`/manuals/${createdManual.id}`);
     } catch (submitError) {
@@ -149,6 +164,28 @@ export default function SubmitPage() {
           onChange={(value) => updateField("manualUrl", value)}
           required
         />
+        <label className="block text-sm font-semibold text-slate-700">
+          매뉴얼 파일 업로드
+          <input
+            type="file"
+            accept="application/pdf,image/jpeg,image/png,image/webp"
+            onChange={(event) => {
+              const selectedFile = event.target.files?.[0] ?? null;
+              if (selectedFile && !isAcceptedManualFile(selectedFile)) {
+                setError("PDF, JPG, PNG, WEBP 파일만 업로드할 수 있습니다.");
+                setManualFile(null);
+                event.target.value = "";
+                return;
+              }
+              setError(null);
+              setManualFile(selectedFile);
+            }}
+            className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-800 file:mr-4 file:rounded-md file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:font-semibold file:text-wiki-blue hover:file:bg-blue-100"
+          />
+          <span className="mt-2 block text-xs font-normal text-slate-500">
+            PDF, JPG, PNG, WEBP 파일을 Supabase Storage manual-files 버킷에 업로드합니다.
+          </span>
+        </label>
         <TextArea label="한국어 요약" value={form.summaryKo} onChange={(value) => updateField("summaryKo", value)} required />
         <TextArea
           label="빠른 사용법"

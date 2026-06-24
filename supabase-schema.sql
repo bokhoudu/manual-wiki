@@ -7,6 +7,10 @@ create table if not exists public.manuals (
   model_name text,
   category text,
   manual_url text,
+  file_url text,
+  file_path text,
+  file_type text,
+  file_name text,
   summary_ko text,
   quick_guide text[],
   troubleshooting jsonb,
@@ -60,3 +64,24 @@ create index if not exists manuals_created_at_idx on public.manuals (created_at 
 create index if not exists manuals_brand_idx on public.manuals (brand);
 create index if not exists manuals_category_idx on public.manuals (category);
 create index if not exists suggestions_manual_id_idx on public.suggestions (manual_id);
+
+alter table public.manuals add column if not exists file_url text;
+alter table public.manuals add column if not exists file_path text;
+alter table public.manuals add column if not exists file_type text;
+alter table public.manuals add column if not exists file_name text;
+
+insert into storage.buckets (id, name, public)
+values ('manual-files', 'manual-files', true)
+on conflict (id) do update set public = excluded.public;
+
+create policy "Anyone can read public manual files"
+  on storage.objects for select
+  using (bucket_id = 'manual-files');
+
+create policy "Authenticated users can upload manual files to own folder"
+  on storage.objects for insert
+  to authenticated
+  with check (
+    bucket_id = 'manual-files'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );

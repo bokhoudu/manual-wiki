@@ -7,6 +7,10 @@ export type ManualRow = {
   model_name: string | null;
   category: string | null;
   manual_url: string | null;
+  file_url: string | null;
+  file_path: string | null;
+  file_type: string | null;
+  file_name: string | null;
   summary_ko: string | null;
   quick_guide: string[] | null;
   troubleshooting: { title: string; solution: string }[] | null;
@@ -24,6 +28,10 @@ export type ManualInsert = {
   model_name: string;
   category: string;
   manual_url: string;
+  file_url: string | null;
+  file_path: string | null;
+  file_type: string | null;
+  file_name: string | null;
   summary_ko: string;
   quick_guide: string[];
   troubleshooting: { title: string; solution: string }[];

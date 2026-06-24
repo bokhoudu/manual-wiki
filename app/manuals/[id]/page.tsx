@@ -8,6 +8,14 @@ import { useManuals } from "@/components/ManualStore";
 import { useAuth } from "@/components/AuthProvider";
 import type { SuggestionType } from "@/types/manual";
 
+function isImageFile(fileType: string | null) {
+  return fileType?.startsWith("image/") ?? false;
+}
+
+function isPdfFile(fileType: string | null) {
+  return fileType === "application/pdf";
+}
+
 export default function ManualDetailPage() {
   const params = useParams<{ id: string }>();
   const { manuals, loading, createSuggestion } = useManuals();
@@ -163,6 +171,42 @@ export default function ManualDetailPage() {
             </div>
           )}
         </div>
+        {manual.fileUrl && (
+          <section className="mt-6 rounded-lg border border-slate-200 bg-wiki-soft p-4">
+            <h2 className="text-lg font-bold text-wiki-ink">업로드된 매뉴얼 파일</h2>
+            <p className="mt-1 text-sm text-slate-600">{manual.fileName ?? "manual file"}</p>
+            {isImageFile(manual.fileType) && (
+              <a href={manual.fileUrl} target="_blank" rel="noreferrer" className="mt-4 block">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={manual.fileUrl}
+                  alt={manual.fileName ?? manual.productName}
+                  className="max-h-[520px] w-full rounded-lg border border-slate-200 object-contain"
+                />
+              </a>
+            )}
+            {isPdfFile(manual.fileType) && (
+              <a
+                href={manual.fileUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-wiki-blue px-4 font-semibold text-white transition hover:bg-blue-700"
+              >
+                PDF 보기/다운로드
+              </a>
+            )}
+            {!isImageFile(manual.fileType) && !isPdfFile(manual.fileType) && (
+              <a
+                href={manual.fileUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-4 inline-flex min-h-11 items-center rounded-lg border border-slate-300 px-4 font-semibold text-slate-700 transition hover:border-wiki-blue hover:bg-blue-50 hover:text-wiki-blue"
+              >
+                파일 열기
+              </a>
+            )}
+          </section>
+        )}
       </div>
 
       <div className="prose prose-slate mt-8 max-w-none">

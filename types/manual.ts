@@ -8,6 +8,10 @@ export type Manual = {
   modelName: string;
   category: string;
   manualUrl: string;
+  fileUrl: string | null;
+  filePath: string | null;
+  fileType: string | null;
+  fileName: string | null;
   summaryKo: string;
   quickGuide: string[];
   troubleshooting: {
@@ -29,6 +33,10 @@ export type ManualInput = {
   modelName: string;
   category: string;
   manualUrl: string;
+  fileUrl: string | null;
+  filePath: string | null;
+  fileType: string | null;
+  fileName: string | null;
   summaryKo: string;
   quickGuide: string[];
   troubleshooting: {
